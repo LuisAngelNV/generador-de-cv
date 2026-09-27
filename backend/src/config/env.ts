@@ -32,6 +32,21 @@ const envSchema = z
     /** In seconds */
     JWT_REFRESH_EXPIRES_IN: duration('7d'),
     CORS_ORIGIN: z.url(),
+    /**
+     * Number of reverse proxies in front of the API, so the client IP (used by the rate limits)
+     * comes from X-Forwarded-For. 0 locally; 2 behind Netlify + Render.
+     */
+    TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+    /** PDFs rendered at the same time; 1 on small instances (each render uses ~100 MB). */
+    PDF_MAX_CONCURRENT: z.coerce.number().int().positive().default(2),
+    /**
+     * Chromium's sandbox needs kernel features that some container platforms do not offer.
+     * Only disable it there: the page already has JavaScript and network access disabled.
+     */
+    PDF_DISABLE_SANDBOX: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
   })
   .refine((vars) => vars.JWT_ACCESS_SECRET !== vars.JWT_REFRESH_SECRET, {
     message: 'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different',

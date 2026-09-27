@@ -236,6 +236,12 @@ Secciones: `experiences`, `educations`, `skills`, `languages`, `projects`, `cert
 - **Secciones genéricas**: cada sección se declara una vez en el backend (`sections.config.ts`) y otra en el frontend (`editor-fields.ts`). Servicios, rutas y formularios son comunes.
 - **Autoguardado en serie**: las peticiones de cada formulario van una tras otra, así un elemento nuevo nunca se crea dos veces.
 
+## Despliegue
+
+El repositorio incluye todo lo necesario para desplegar el frontend en **Netlify** ([`netlify.toml`](netlify.toml)) y la API en **Render** con Docker ([`render.yaml`](render.yaml), [`backend/Dockerfile`](backend/Dockerfile)), con la base de datos en Supabase. Netlify reenvía `/api` a Render, así que las cookies de sesión siguen siendo del mismo dominio.
+
+La guía paso a paso está en **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
 ## Solución de problemas
 
 - **Windows**: arranca el backend con `npm run dev` desde una terminal normal. Lanzado desde ciertos gestores de procesos de IDEs, la primera generación de PDF puede quedarse bloqueada.

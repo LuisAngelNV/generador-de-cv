@@ -91,6 +91,12 @@ CORS_ORIGIN=http://localhost:4200
 PORT=3000
 ```
 
+## Despliegue
+- Frontend en **Netlify** (`netlify.toml`): build de `frontend/`, publica `dist/frontend/browser` y reenvía `/api/*` a la API, para que la app y la API compartan origen y las cookies `SameSite=Strict` funcionen.
+- API en **Render** con Docker (`render.yaml`, `backend/Dockerfile`, región Virginia, junto a Supabase `us-east-1`). La imagen incluye el Chromium de Puppeteer y `fonts-liberation`.
+- Supabase: un proyecto de producción distinto del de desarrollo. Las migraciones se aplican a mano (`prisma migrate deploy` con `DIRECT_URL` de producción) **antes** de desplegar código que las necesite; la imagen no incluye la CLI de Prisma.
+- Variables solo de producción: `TRUST_PROXY=2`, `PDF_MAX_CONCURRENT=1` y `PDF_DISABLE_SANDBOX=true`. Guía completa en `docs/DEPLOY.md`.
+
 ## Base de datos en Supabase
 Supabase se usa **solo como PostgreSQL gestionado**. No se usan Supabase Auth, Storage, Realtime ni `@supabase/supabase-js`: la autenticación sigue siendo JWT propio y el acceso a datos siempre pasa por Prisma desde el backend.
 

@@ -10,6 +10,9 @@ import { createApiRouter } from './routes';
 export function createApp() {
   const app = express();
 
+  // Behind proxies (Netlify → Render) the real client IP is in X-Forwarded-For.
+  app.set('trust proxy', env.TRUST_PROXY);
+
   app.use(helmet());
   app.use(
     cors({

@@ -1,7 +1,13 @@
 import type { Browser, Page } from 'puppeteer';
+import { env } from '../config/env';
 
-const MAX_CONCURRENT_RENDERS = 2;
 const RENDER_TIMEOUT_MS = 20_000;
+
+const LAUNCH_ARGS = [
+  // Containers usually have a tiny /dev/shm; Chromium uses /tmp instead.
+  '--disable-dev-shm-usage',
+  ...(env.PDF_DISABLE_SANDBOX ? ['--no-sandbox', '--disable-setuid-sandbox'] : []),
+];
 
 let browserPromise: Promise<Browser> | null = null;
 
@@ -11,7 +17,7 @@ let browserPromise: Promise<Browser> | null = null;
  */
 function getBrowser(): Promise<Browser> {
   browserPromise ??= import('puppeteer')
-    .then(({ default: puppeteer }) => puppeteer.launch({ headless: true }))
+    .then(({ default: puppeteer }) => puppeteer.launch({ headless: true, args: LAUNCH_ARGS }))
     .then((browser) => {
       browser.on('disconnected', () => {
         browserPromise = null;
@@ -30,7 +36,7 @@ const waiting: (() => void)[] = [];
 
 /** Limits concurrent renders; a render waits for a free slot instead of opening more pages. */
 async function acquireSlot(): Promise<void> {
-  if (activeRenders < MAX_CONCURRENT_RENDERS) {
+  if (activeRenders < env.PDF_MAX_CONCURRENT) {
     activeRenders++;
     return;
   }

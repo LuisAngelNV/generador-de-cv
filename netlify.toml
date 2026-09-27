@@ -1,0 +1,32 @@
+# Netlify: builds the Angular app and proxies /api to the backend on Render.
+# See docs/DEPLOY.md.
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist/frontend/browser"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# The API is served from the same origin as the app, so the SameSite=Strict session
+# cookies keep working. Change the host if your Render service has another URL.
+[[redirects]]
+  from = "/api/*"
+  to = "https://generador-de-cv-api.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# Single-page app: every other route is handled by Angular.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
