@@ -1,5 +1,5 @@
 import { computed, Injectable, signal } from '@angular/core';
-import { catchError, finalize, Observable, throwError } from 'rxjs';
+import { catchError, finalize, Observable, tap, throwError } from 'rxjs';
 import { getApiErrorMessage } from '../../core/http/api-error';
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
@@ -25,8 +25,11 @@ export class SaveTracker {
   private readonly dirty = signal<ReadonlySet<object>>(new Set());
   private readonly invalid = signal<ReadonlySet<object>>(new Set());
   private readonly error = signal<string | null>(null);
+  private readonly savedRevision = signal(0);
 
   readonly lastError = this.error.asReadonly();
+  /** Increases after every successful save; the preview reloads when it changes. */
+  readonly revision = this.savedRevision.asReadonly();
   readonly status = computed<SaveStatus>(() => {
     if (this.inFlight() > 0) return 'saving';
     if (this.error()) return 'error';
@@ -54,6 +57,7 @@ export class SaveTracker {
     this.inFlight.update((count) => count + 1);
     this.error.set(null);
     return request.pipe(
+      tap(() => this.savedRevision.update((revision) => revision + 1)),
       catchError((error: unknown) => {
         this.error.set(getApiErrorMessage(error, 'No se han podido guardar los cambios.'));
         return throwError(() => error);

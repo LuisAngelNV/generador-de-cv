@@ -41,6 +41,28 @@ describe('CvsService', () => {
     expect(http.expectOne('/api/cvs/cv-1/duplicate').request.method).toBe('POST');
   });
 
+  it('gets the preview as text', () => {
+    let html: string | undefined;
+    service.preview('cv-1').subscribe((value) => (html = value));
+
+    const req = http.expectOne('/api/cvs/cv-1/preview');
+    expect(req.request.responseType).toBe('text');
+    req.flush('<html></html>');
+    expect(html).toBe('<html></html>');
+  });
+
+  it('downloads the PDF with the filename from Content-Disposition', () => {
+    let result: { blob: Blob; filename: string } | undefined;
+    service.downloadPdf('cv-1').subscribe((value) => (result = value));
+
+    const req = http.expectOne('/api/cvs/cv-1/pdf');
+    expect(req.request.responseType).toBe('blob');
+    req.flush(new Blob(['%PDF-']), {
+      headers: { 'Content-Disposition': 'attachment; filename="ana-garcia.pdf"' },
+    });
+    expect(result?.filename).toBe('ana-garcia.pdf');
+  });
+
   it('builds section item URLs', () => {
     service.createItem('cv-1', 'skills', { name: 'TypeScript', level: null }).subscribe();
     service.deleteItem('cv-1', 'skills', 'skill-1').subscribe();

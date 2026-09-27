@@ -140,12 +140,13 @@ Supabase se usa **solo como PostgreSQL gestionado**. No se usan Supabase Auth, S
 - **Frontend:** `AuthService` (sesión en signals, restaurada con `provideAppInitializer`), `authInterceptor` (401 → refresh → reintento), `authGuard` / `guestGuard` y `safeReturnUrl` para evitar redirecciones abiertas. Tras el login se va a `/cvs`.
 
 ## Generación de PDF y vista previa (Puppeteer)
-- **Una única fuente de verdad:** las plantillas de CV viven en `backend/src/templates/` como HTML + CSS (Tailwind compilado). Tanto la vista previa como el PDF usan exactamente la misma plantilla, para que lo que el usuario ve sea lo que descarga.
-- **Vista previa:** `POST /api/cvs/preview` recibe los datos del CV (aunque no estén guardados) y devuelve el HTML renderizado. Angular lo muestra en un `<iframe>` (con `srcdoc` y `sandbox`), actualizándolo con *debounce* (~500 ms) mientras el usuario edita.
-- **PDF:** `GET /api/cvs/:id/pdf` renderiza la plantilla con Puppeteer (`page.setContent` + `page.pdf`, formato A4, `printBackground: true`) y la devuelve con `Content-Type: application/pdf`.
-- **Rendimiento:** reutilizar una única instancia del navegador (en `src/lib/`), abrir una página nueva por petición y cerrarla siempre en un `finally`. Limitar las renderizaciones simultáneas y poner un tiempo máximo por PDF.
-- **Seguridad:** escapar siempre todo el contenido del usuario al generar el HTML (nada de interpolar HTML sin escapar). En Puppeteer, bloquear las peticiones de red externas (`page.setRequestInterception`) y deshabilitar JavaScript en la página si la plantilla no lo necesita. Las fuentes e imágenes de la plantilla se incluyen localmente o en base64.
-- Cuidar los saltos de página: usar `break-inside: avoid` en cada entrada de experiencia, educación, etc.
+- **Una única fuente de verdad:** las plantillas viven en `backend/src/templates/<plantilla>/` como funciones TypeScript que devuelven un documento HTML completo con su CSS de impresión escrito a mano (`styles.ts`, en `pt`/`mm`, `@page` A4). No se usa Tailwind en las plantillas: el CSS de impresión se controla mejor a mano y así no hace falta un paso de compilación. `renderCvHtml()` (`templates/index.ts`) elige la plantilla por `templateId`; los textos de cada idioma del CV están en `templates/labels.ts`.
+- **Vista previa:** `GET /api/cvs/:cvId/preview` devuelve el HTML del **CV guardado**. Como el editor autoguarda, la vista previa va ~1 s por detrás de lo que se escribe y es exactamente lo que se imprimirá. Angular la muestra en un `<iframe srcdoc sandbox="allow-same-origin">` (sin `allow-scripts`; same-origin solo para medir la altura), escalada al ancho disponible, y la recarga cuando cambia `SaveTracker.revision`.
+- **PDF:** `GET /api/cvs/:cvId/pdf` imprime ese mismo HTML con Puppeteer (`page.setContent` + `page.pdf`, A4, `preferCSSPageSize`) y responde `attachment; filename="<nombre>.pdf"` (`Content-Disposition` expuesta por CORS). Está limitado a 20 peticiones por minuto. Si Chromium falla, responde `503 PDF_GENERATION_FAILED`.
+- **Rendimiento (`src/lib/pdf-renderer.ts`):** un único navegador compartido, que se relanza si se cae; una página por petición, cerrada siempre en un `finally`; como máximo 2 renderizados a la vez (el resto espera turno) y 20 s de tiempo máximo. Puppeteer es solo ESM, así que se carga con `import()` dinámico. Se cierra en el apagado del servidor y al final de los tests.
+- **Seguridad:** todo valor del usuario se interpola con la plantilla etiquetada `html` de `src/lib/html.ts`, que escapa por defecto; solo `http(s)` puede convertirse en enlace (`safeUrl`). El documento lleva una CSP `default-src 'none'` (sin scripts ni peticiones externas), y en Puppeteer además se desactiva JavaScript y se abortan todas las peticiones que no sean `data:`. Solo se usan fuentes del sistema (Arial / Liberation Sans).
+- **Saltos de página:** `break-inside: avoid` en cada entrada y `break-after: avoid` en los títulos de sección. En pantalla el documento se ve continuo; los saltos se aplican en el PDF.
+- **Desarrollo en Windows:** arranca el backend con `npm run dev` desde una terminal. Lanzado desde el panel de vista previa de la app de escritorio de Claude, la primera generación de PDF bloquea el proceso (no ocurre en terminal, en los tests ni en el build).
 
 ## Convenciones de la API
 - API REST con prefijo `/api`. Recursos en plural y en inglés: `/api/auth`, `/api/cvs`, `/api/cvs/:id/experiences`.
@@ -166,6 +167,8 @@ Supabase se usa **solo como PostgreSQL gestionado**. No se usan Supabase Auth, S
 | `PATCH /api/cvs/:cvId` | `{ cv }`: actualización parcial de título, plantilla, idioma y perfil |
 | `DELETE /api/cvs/:cvId` | `204` (borra también sus secciones) |
 | `POST /api/cvs/:cvId/duplicate` | `201 { cv }`: copia con el título «… (copia)» |
+| `GET /api/cvs/:cvId/preview` | `text/html`: el CV guardado renderizado con su plantilla |
+| `GET /api/cvs/:cvId/pdf` | `application/pdf` como adjunto (límite: 20/min) |
 | `GET` / `POST /api/cvs/:cvId/<seccion>` | `{ items }` / `201 { item }` (se añade al final) |
 | `PATCH` / `DELETE /api/cvs/:cvId/<seccion>/:itemId` | `{ item }` / `204` |
 | `PUT /api/cvs/:cvId/<seccion>/order` `{ ids }` | `{ items }`: `ids` debe incluir todos los elementos una sola vez |
@@ -190,6 +193,7 @@ Supabase se usa **solo como PostgreSQL gestionado**. No se usan Supabase Auth, S
 - **Autoguardado:** usa siempre `autosave()` (`autosave.ts`). Guarda 800 ms después del último cambio, solo si el formulario es válido y con las peticiones en serie, para que un elemento nuevo no se cree dos veces. Al destruir el componente guarda los cambios pendientes.
 - **Estado de guardado:** `SaveTracker` (proveído por el editor) agrega el estado de todos los formularios que se muestra en la cabecera (`Guardando…`, `Todos los cambios guardados`, `Cambios sin guardar`, `Error al guardar`). Todas las peticiones del editor pasan por `tracker.track()`.
 - **Salir del editor:** `leaveEditorGuard` solo pide confirmación si hay cambios que no se pueden guardar (formularios inválidos o un error); `beforeunload` avisa mientras quede algo pendiente.
+- **Disposición:** en escritorio (`lg`), editor a la izquierda y vista previa fija a la derecha; en pantallas pequeñas, pestañas «Editar» / «Vista previa». «Descargar PDF» (cabecera) espera hasta 3 s a que terminen los autoguardados pendientes antes de pedir el PDF.
 - **Elementos de sección:** empiezan como borrador sin `id`. El primer guardado válido hace `POST` y los siguientes `PATCH`. Se reordenan con botones subir y bajar (las peticiones de orden también van en serie) y cada elemento gestiona su propio borrado.
 
 ## Convenciones de código

@@ -13,6 +13,11 @@ import {
 
 const API = '/api/cvs';
 
+/** `attachment; filename="ana-garcia.pdf"` → `ana-garcia.pdf` */
+function filenameFrom(contentDisposition: string | null): string | null {
+  return contentDisposition?.match(/filename="([^"]+)"/)?.[1] ?? null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CvsService {
   private readonly http = inject(HttpClient);
@@ -41,6 +46,20 @@ export class CvsService {
     return this.http
       .post<{ cv: CvDetail }>(`${API}/${cvId}/duplicate`, {})
       .pipe(map(({ cv }) => cv));
+  }
+
+  /** The saved CV rendered as a standalone HTML document (the same one printed to PDF). */
+  preview(cvId: string): Observable<string> {
+    return this.http.get(`${API}/${cvId}/preview`, { responseType: 'text' });
+  }
+
+  downloadPdf(cvId: string): Observable<{ blob: Blob; filename: string }> {
+    return this.http.get(`${API}/${cvId}/pdf`, { responseType: 'blob', observe: 'response' }).pipe(
+      map((response) => ({
+        blob: response.body ?? new Blob([], { type: 'application/pdf' }),
+        filename: filenameFrom(response.headers.get('Content-Disposition')) ?? 'cv.pdf',
+      })),
+    );
   }
 
   createItem<K extends CvSectionKey>(

@@ -1,5 +1,6 @@
 import { createApp } from './app';
 import { env } from './config/env';
+import { closePdfRenderer } from './lib/pdf-renderer';
 import { prisma } from './lib/prisma';
 
 const server = createApp().listen(env.PORT, () => {
@@ -9,7 +10,7 @@ const server = createApp().listen(env.PORT, () => {
 function shutdown(signal: string) {
   console.log(`${signal} received, shutting down`);
   server.close(async () => {
-    await prisma.$disconnect();
+    await Promise.all([prisma.$disconnect(), closePdfRenderer()]);
     process.exit(0);
   });
 }

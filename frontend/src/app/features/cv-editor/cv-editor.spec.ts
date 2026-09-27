@@ -42,6 +42,17 @@ const cv: CvDetail = {
   certifications: [],
 };
 
+// jsdom has no ResizeObserver (used by the preview) nor object URLs (used by the download).
+beforeAll(() => {
+  globalThis.ResizeObserver ??= class {
+    observe = vi.fn();
+    disconnect = vi.fn();
+    unobserve = vi.fn();
+  } as unknown as typeof ResizeObserver;
+  URL.createObjectURL ??= () => 'blob:test';
+  URL.revokeObjectURL ??= () => undefined;
+});
+
 describe('CvEditor', () => {
   let fixture: ComponentFixture<CvEditor>;
   let http: HttpTestingController;
@@ -58,7 +69,11 @@ describe('CvEditor', () => {
     await fixture.whenStable();
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    // The preview loads on its own after a short delay; it has its own tests.
+    http.match((req) => req.url.endsWith('/preview')).forEach((req) => req.flush(''));
+    http.verify();
+  });
 
   it('loads the CV and shows the profile and every section', async () => {
     http.expectOne('/api/cvs/cv-1').flush({ cv });
@@ -88,6 +103,49 @@ describe('CvEditor', () => {
     await fixture.whenStable();
 
     expect(element.textContent).toContain('No se ha encontrado este CV');
+  });
+
+  it('downloads the PDF with the name sent by the server', async () => {
+    http.expectOne('/api/cvs/cv-1').flush({ cv });
+    await fixture.whenStable();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+
+    const button = [...element.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Descargar PDF'),
+    ) as HTMLButtonElement;
+    button.click();
+    await fixture.whenStable();
+    expect(button.textContent).toContain('Generando');
+
+    http.expectOne('/api/cvs/cv-1/pdf').flush(new Blob(['%PDF-'], { type: 'application/pdf' }), {
+      headers: { 'Content-Disposition': 'attachment; filename="ana-garcia.pdf"' },
+    });
+    await fixture.whenStable();
+
+    const link = click.mock.contexts[0] as HTMLAnchorElement;
+    expect(link.download).toBe('ana-garcia.pdf');
+    expect(button.textContent).toContain('Descargar PDF');
+    click.mockRestore();
+  });
+
+  it('shows an error when the PDF cannot be generated', async () => {
+    http.expectOne('/api/cvs/cv-1').flush({ cv });
+    await fixture.whenStable();
+
+    [...element.querySelectorAll('button')]
+      .find((b) => b.textContent?.includes('Descargar PDF'))
+      ?.click();
+    await fixture.whenStable();
+    http
+      .expectOne('/api/cvs/cv-1/pdf')
+      .flush(new Blob(), { status: 503, statusText: 'Unavailable' });
+    await fixture.whenStable();
+
+    expect(element.querySelector('main [role="alert"]')?.textContent).toContain(
+      'No se ha podido generar el PDF',
+    );
   });
 
   it('lets the user leave while there is nothing that cannot be saved', async () => {

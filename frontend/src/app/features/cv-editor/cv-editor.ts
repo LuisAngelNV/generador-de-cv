@@ -9,11 +9,15 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { LeaveGuarded } from './leave-editor.guard';
+import { filter, first, map, merge, switchMap, timer } from 'rxjs';
 import { CvDetail } from '../../core/cvs/cv.models';
 import { CvsService } from '../../core/cvs/cvs.service';
+import { getApiErrorMessage } from '../../core/http/api-error';
+import { CvPreview } from './cv-preview/cv-preview';
 import { SECTION_CONFIGS } from './editor-fields';
+import { LeaveGuarded } from './leave-editor.guard';
 import { ProfileForm } from './profile-form/profile-form';
 import { SaveStatus, SaveTracker } from './save-tracker';
 import { SectionEditor } from './section-editor/section-editor';
@@ -25,9 +29,14 @@ const STATUS_LABELS: Record<SaveStatus, string> = {
   error: 'Error al guardar',
 };
 
+/** How long a download waits for pending autosaves before printing what is saved. */
+const MAX_WAIT_FOR_SAVE_MS = 3000;
+
+type EditorTab = 'edit' | 'preview';
+
 @Component({
   selector: 'app-cv-editor',
-  imports: [RouterLink, ProfileForm, SectionEditor],
+  imports: [RouterLink, ProfileForm, SectionEditor, CvPreview],
   templateUrl: './cv-editor.html',
   providers: [SaveTracker],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,6 +52,16 @@ export class CvEditor implements OnInit, LeaveGuarded {
   protected readonly status = signal<'loading' | 'ready' | 'not-found' | 'error'>('loading');
   protected readonly sections = SECTION_CONFIGS;
   protected readonly statusLabel = computed(() => STATUS_LABELS[this.tracker.status()]);
+
+  protected readonly tabs: { id: EditorTab; label: string }[] = [
+    { id: 'edit', label: 'Editar' },
+    { id: 'preview', label: 'Vista previa' },
+  ];
+  protected readonly activeTab = signal<EditorTab>('edit');
+
+  protected readonly downloading = signal(false);
+  protected readonly downloadError = signal<string | null>(null);
+  private readonly status$ = toObservable(this.tracker.status);
 
   ngOnInit(): void {
     this.load();
@@ -63,6 +82,33 @@ export class CvEditor implements OnInit, LeaveGuarded {
     });
   }
 
+  /**
+   * The PDF is printed from the saved CV, so pending autosaves are given a moment to finish
+   * (invalid changes never will: after the wait, what is saved is downloaded).
+   */
+  protected downloadPdf(): void {
+    const cv = this.cv();
+    if (!cv || this.downloading()) return;
+
+    this.downloading.set(true);
+    this.downloadError.set(null);
+    merge(this.status$.pipe(filter((status) => status === 'saved')), timer(MAX_WAIT_FOR_SAVE_MS))
+      .pipe(
+        first(),
+        switchMap(() => this.cvsService.downloadPdf(cv.id)),
+        map(({ blob, filename }) => saveFile(blob, filename)),
+      )
+      .subscribe({
+        next: () => this.downloading.set(false),
+        error: (error: unknown) => {
+          this.downloadError.set(
+            getApiErrorMessage(error, 'No se ha podido generar el PDF. Inténtalo de nuevo.'),
+          );
+          this.downloading.set(false);
+        },
+      });
+  }
+
   /** Items of a section, typed loosely for the generic section editor. */
   protected itemsOf(cv: CvDetail, key: (typeof SECTION_CONFIGS)[number]['key']): readonly object[] {
     return cv[key];
@@ -80,4 +126,13 @@ export class CvEditor implements OnInit, LeaveGuarded {
   canLeave(): boolean {
     return !this.tracker.hasUnsavableChanges();
   }
+}
+
+function saveFile(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
