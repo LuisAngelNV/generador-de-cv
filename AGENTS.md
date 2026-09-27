@@ -185,6 +185,13 @@ Supabase se usa **solo como PostgreSQL gestionado**. No se usan Supabase Auth, S
 - Accesibilidad: HTML semántico, etiquetas en todos los campos, navegación por teclado y contraste suficiente (WCAG 2.1 AA).
 - Estados de carga, vacío y error en todas las vistas.
 
+### Editor de CV (`features/cv-editor`, ruta `/cvs/:id`)
+- **Campos:** los de cada sección se declaran en `editor-fields.ts` (`SECTION_CONFIGS`) y se pintan con el componente genérico `app-form-field`. Una sección nueva del backend solo necesita su configuración ahí. Las fechas se editan como mes (`<input type="month">`) y se envían como `AAAA-MM-01`.
+- **Autoguardado:** usa siempre `autosave()` (`autosave.ts`). Guarda 800 ms después del último cambio, solo si el formulario es válido y con las peticiones en serie, para que un elemento nuevo no se cree dos veces. Al destruir el componente guarda los cambios pendientes.
+- **Estado de guardado:** `SaveTracker` (proveído por el editor) agrega el estado de todos los formularios que se muestra en la cabecera (`Guardando…`, `Todos los cambios guardados`, `Cambios sin guardar`, `Error al guardar`). Todas las peticiones del editor pasan por `tracker.track()`.
+- **Salir del editor:** `leaveEditorGuard` solo pide confirmación si hay cambios que no se pueden guardar (formularios inválidos o un error); `beforeunload` avisa mientras quede algo pendiente.
+- **Elementos de sección:** empiezan como borrador sin `id`. El primer guardado válido hace `POST` y los siguientes `PATCH`. Se reordenan con botones subir y bajar (las peticiones de orden también van en serie) y cada elemento gestiona su propio borrado.
+
 ## Convenciones de código
 - **Código, nombres, rutas y commits en inglés. Textos de la interfaz en español.**
 - Archivos en `kebab-case`, clases en `PascalCase`, variables y funciones en `camelCase`.

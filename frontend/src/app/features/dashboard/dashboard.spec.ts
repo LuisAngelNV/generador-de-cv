@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { CvSummary } from '../../core/cvs/cv.models';
 import { Dashboard } from './dashboard';
 
@@ -82,7 +82,8 @@ describe('Dashboard', () => {
     expect(titles()).toEqual(['Frontend']);
   });
 
-  it('creates a CV and shows it first', async () => {
+  it('creates a CV and opens it in the editor', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await respondWithCvs([cv('1', 'Frontend')]);
 
     button('Nuevo CV')?.click();
@@ -98,6 +99,7 @@ describe('Dashboard', () => {
     await fixture.whenStable();
 
     expect(titles()).toEqual(['Backend', 'Frontend']);
+    expect(navigate).toHaveBeenCalledWith(['/cvs', '2']);
   });
 
   it('does not create a CV without a title', async () => {

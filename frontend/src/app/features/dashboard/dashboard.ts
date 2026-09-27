@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { CvSummary, toCvSummary } from '../../core/cvs/cv.models';
 import { CvsService } from '../../core/cvs/cvs.service';
@@ -18,6 +19,7 @@ type TitleDialogState = { mode: 'create' } | { mode: 'rename'; cv: CvSummary };
 export class Dashboard {
   private readonly auth = inject(AuthService);
   private readonly cvsService = inject(CvsService);
+  private readonly router = inject(Router);
 
   protected readonly user = this.auth.user;
   protected readonly loggingOut = signal(false);
@@ -93,6 +95,9 @@ export class Dashboard {
         this.putFirst(toCvSummary(cv));
         this.dialogSaving.set(false);
         this.titleDialog.set(null);
+        if (state.mode === 'create') {
+          void this.router.navigate(['/cvs', cv.id]);
+        }
       },
       error: (error: unknown) => {
         this.dialogError.set(getApiErrorMessage(error, 'No se ha podido guardar el CV.'));

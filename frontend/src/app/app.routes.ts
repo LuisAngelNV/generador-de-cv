@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard } from './core/auth/auth.guards';
+import { leaveEditorGuard } from './features/cv-editor/leave-editor.guard';
 
 export const routes: Routes = [
   {
@@ -24,6 +25,13 @@ export const routes: Routes = [
     title: 'Mis CVs · Generador de CV',
     canActivate: [authGuard],
     loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
+  },
+  {
+    path: 'cvs/:id',
+    title: 'Editar CV · Generador de CV',
+    canActivate: [authGuard],
+    canDeactivate: [leaveEditorGuard],
+    loadComponent: () => import('./features/cv-editor/cv-editor').then((m) => m.CvEditor),
   },
   {
     path: '**',

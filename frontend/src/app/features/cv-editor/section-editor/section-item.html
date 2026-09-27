@@ -1,0 +1,114 @@
+<div class="rounded-xl border border-slate-200 bg-white">
+  <div class="flex items-center gap-2 p-2 pl-4">
+    <h3 class="min-w-0 flex-1">
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded py-1 text-left font-medium focus-visible:outline-2 focus-visible:outline-slate-900"
+        [attr.aria-expanded]="expanded()"
+        [attr.aria-controls]="idPrefix + '-body'"
+        (click)="toggled.emit()"
+      >
+        <span
+          aria-hidden="true"
+          class="inline-block text-slate-400 transition-transform"
+          [class.rotate-90]="expanded()"
+          >▸</span
+        >
+        <span class="truncate">{{ title() }}</span>
+        @if (form.invalid && form.dirty) {
+          <span class="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">
+            Incompleto
+          </span>
+        }
+      </button>
+    </h3>
+
+    <div class="flex shrink-0 items-center">
+      <button
+        type="button"
+        class="rounded p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-30"
+        [disabled]="isFirst()"
+        (click)="movedUp.emit()"
+      >
+        <span aria-hidden="true">↑</span>
+        <span class="sr-only">Subir {{ title() }}</span>
+      </button>
+      <button
+        type="button"
+        class="rounded p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-30"
+        [disabled]="isLast()"
+        (click)="movedDown.emit()"
+      >
+        <span aria-hidden="true">↓</span>
+        <span class="sr-only">Bajar {{ title() }}</span>
+      </button>
+      <button
+        type="button"
+        class="rounded p-2 text-red-700 hover:bg-red-50"
+        (click)="confirmingDelete.set(true)"
+      >
+        <span aria-hidden="true">✕</span>
+        <span class="sr-only">Eliminar {{ title() }}</span>
+      </button>
+    </div>
+  </div>
+
+  <div [id]="idPrefix + '-body'" [hidden]="!expanded()" class="border-t border-slate-100 p-4">
+    <div class="grid gap-4 sm:grid-cols-2" [formGroup]="form">
+      @for (field of config().fields; track field.key) {
+        <div [class.sm:col-span-2]="field.wide">
+          <app-form-field
+            [field]="field"
+            [control]="form.controls[field.key]!"
+            [idPrefix]="idPrefix"
+          />
+        </div>
+      }
+    </div>
+
+    @if (form.hasError('dateRange')) {
+      <p class="form-error" role="alert">La fecha de fin no puede ser anterior a la de inicio.</p>
+    }
+
+    @if (saveError(); as message) {
+      <div
+        class="mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800"
+        role="alert"
+      >
+        <p>{{ message }}</p>
+        <button type="button" class="font-medium underline" (click)="retrySave()">
+          Reintentar
+        </button>
+      </div>
+    }
+  </div>
+</div>
+
+<app-dialog
+  [open]="confirmingDelete()"
+  [heading]="'Eliminar de ' + config().title.toLowerCase()"
+  (closed)="confirmingDelete.set(false)"
+>
+  <p class="text-slate-700">
+    ¿Seguro que quieres eliminar <strong class="break-words">{{ title() }}</strong
+    >? No se puede deshacer.
+  </p>
+  @if (deleteError(); as message) {
+    <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+      {{ message }}
+    </p>
+  }
+  <div class="mt-6 flex justify-end gap-2">
+    <button type="button" class="btn-secondary" (click)="confirmingDelete.set(false)">
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="btn-primary bg-red-700 hover:bg-red-800"
+      [disabled]="deleting()"
+      (click)="confirmDelete()"
+    >
+      Eliminar
+    </button>
+  </div>
+</app-dialog>

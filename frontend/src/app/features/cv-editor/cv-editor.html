@@ -1,0 +1,83 @@
+<header class="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
+  <div class="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
+    <a
+      routerLink="/cvs"
+      class="shrink-0 rounded-lg px-2 py-1 text-sm font-medium text-slate-700 hover:bg-slate-100"
+    >
+      <span aria-hidden="true">←</span> Mis CVs
+    </a>
+    <p class="min-w-0 flex-1 truncate font-semibold">{{ cv()?.title }}</p>
+    @if (status() === 'ready') {
+      <p
+        class="flex shrink-0 items-center gap-2 text-sm"
+        [class.text-slate-500]="tracker.status() === 'saved' || tracker.status() === 'saving'"
+        [class.text-amber-700]="tracker.status() === 'unsaved'"
+        [class.text-red-700]="tracker.status() === 'error'"
+        role="status"
+        aria-live="polite"
+      >
+        <span
+          aria-hidden="true"
+          class="size-2 rounded-full"
+          [class.bg-emerald-500]="tracker.status() === 'saved'"
+          [class.bg-slate-400]="tracker.status() === 'saving'"
+          [class.animate-pulse]="tracker.status() === 'saving'"
+          [class.bg-amber-500]="tracker.status() === 'unsaved'"
+          [class.bg-red-600]="tracker.status() === 'error'"
+        ></span>
+        <span class="hidden sm:inline">{{ statusLabel() }}</span>
+        <span class="sr-only sm:hidden">{{ statusLabel() }}</span>
+      </p>
+    }
+  </div>
+</header>
+
+<main class="mx-auto max-w-3xl px-4 py-6">
+  @switch (status()) {
+    @case ('loading') {
+      <div class="space-y-4" aria-busy="true">
+        <p class="sr-only" role="status">Cargando el CV…</p>
+        @for (placeholder of [1, 2, 3]; track placeholder) {
+          <div class="h-40 animate-pulse rounded-2xl bg-slate-200" aria-hidden="true"></div>
+        }
+      </div>
+    }
+    @case ('not-found') {
+      <div class="rounded-2xl border border-slate-200 bg-white p-10 text-center">
+        <h1 class="text-xl font-semibold">No se ha encontrado este CV</h1>
+        <p class="mt-2 text-slate-600">
+          Puede que se haya eliminado o que el enlace no sea correcto.
+        </p>
+        <a routerLink="/cvs" class="btn-primary mt-4">Volver a mis CVs</a>
+      </div>
+    }
+    @case ('error') {
+      <div class="rounded-2xl border border-red-200 bg-white p-10 text-center" role="alert">
+        <p class="text-slate-700">No se ha podido cargar el CV.</p>
+        <button type="button" class="btn-secondary mt-4" (click)="load()">Reintentar</button>
+      </div>
+    }
+    @case ('ready') {
+      @if (cv(); as cv) {
+        <h1 class="sr-only">Editar {{ cv.title }}</h1>
+
+        @if (tracker.lastError(); as message) {
+          <p class="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+            {{ message }} Revisa la sección marcada e inténtalo de nuevo.
+          </p>
+        }
+
+        <div class="space-y-6">
+          <app-profile-form [cv]="cv" />
+          @for (section of sections; track section.key) {
+            <app-section-editor
+              [config]="section"
+              [cvId]="cv.id"
+              [initialItems]="itemsOf(cv, section.key)"
+            />
+          }
+        </div>
+      }
+    }
+  }
+</main>

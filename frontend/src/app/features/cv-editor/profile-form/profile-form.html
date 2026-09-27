@@ -1,0 +1,69 @@
+<section
+  class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
+  aria-labelledby="profile-heading"
+>
+  <h2 id="profile-heading" class="text-lg font-semibold">Datos personales</h2>
+
+  <div class="mt-4 grid gap-4 sm:grid-cols-2">
+    @for (field of fields; track field.key) {
+      <div [class.sm:col-span-2]="field.wide">
+        <app-form-field
+          [field]="field"
+          [control]="fieldControls[field.key]!"
+          [idPrefix]="idPrefix"
+        />
+      </div>
+    }
+  </div>
+
+  <fieldset class="mt-6">
+    <legend class="form-label">
+      Enlaces <span class="font-normal text-slate-500">(opcional)</span>
+    </legend>
+    <p class="text-sm text-slate-500">LinkedIn, GitHub, portfolio…</p>
+
+    @if (linkCount() > 0) {
+      <ul class="mt-3 space-y-3">
+        @for (link of links.controls; track link; let i = $index) {
+          <li
+            class="grid items-start gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-[1fr_2fr_auto]"
+          >
+            <app-form-field
+              [field]="linkLabel"
+              [control]="link.controls.label"
+              [idPrefix]="idPrefix + '-link-' + i"
+            />
+            <app-form-field
+              [field]="linkUrl"
+              [control]="link.controls.url"
+              [idPrefix]="idPrefix + '-link-' + i"
+            />
+            <button
+              type="button"
+              class="btn-secondary self-end text-red-700 hover:bg-red-50"
+              (click)="removeLink(i)"
+            >
+              Quitar <span class="sr-only">enlace {{ i + 1 }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (linkCount() < maxLinks) {
+      <button type="button" class="btn-secondary mt-3" (click)="addLink()">
+        <span aria-hidden="true">+</span> Añadir enlace
+      </button>
+    }
+  </fieldset>
+
+  @if (saveError(); as message) {
+    <div
+      class="mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800"
+      role="alert"
+    >
+      <p>{{ message }}</p>
+      <button type="button" class="font-medium underline" (click)="retrySave()">Reintentar</button>
+    </div>
+  }
+</section>
