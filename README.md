@@ -78,7 +78,7 @@ flowchart LR
 ### 1. Clonar e instalar
 
 ```bash
-git clone https://github.com/<tu-usuario>/generador-de-cv.git
+git clone https://github.com/LuisAngelNV/generador-de-cv.git
 cd generador-de-cv
 cd backend && npm install && cd ..
 cd frontend && npm install && cd ..
@@ -240,3 +240,7 @@ Secciones: `experiences`, `educations`, `skills`, `languages`, `projects`, `cert
 
 - **Windows**: arranca el backend con `npm run dev` desde una terminal normal. Lanzado desde ciertos gestores de procesos de IDEs, la primera generación de PDF puede quedarse bloqueada.
 - **`self-signed certificate in certificate chain`** al conectar con Supabase: descarga el certificado CA desde *Project Settings → Database* y configúralo en la conexión. No desactives la verificación TLS en producción.
+
+## Licencia
+
+[MIT](LICENSE)
