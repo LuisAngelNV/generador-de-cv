@@ -1,0 +1,126 @@
+<main class="flex min-h-dvh items-center justify-center px-4 py-12">
+  <div class="w-full max-w-sm">
+    <h1 class="text-center text-2xl font-bold tracking-tight">Crea tu cuenta</h1>
+    <p class="mt-2 text-center text-sm text-slate-600">
+      ¿Ya tienes cuenta? <a routerLink="/login" class="link">Inicia sesión</a>
+    </p>
+
+    <form
+      class="mt-8 space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+      novalidate
+    >
+      @if (serverError(); as message) {
+        <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+          {{ message }}
+        </p>
+      }
+
+      <div>
+        <label for="name" class="form-label">
+          Nombre <span class="font-normal text-slate-500">(opcional)</span>
+        </label>
+        <input
+          id="name"
+          type="text"
+          class="form-input"
+          formControlName="name"
+          autocomplete="name"
+          [attr.aria-invalid]="form.controls.name.touched && form.controls.name.invalid"
+          aria-describedby="name-error"
+        />
+        @if (form.controls.name.touched && form.controls.name.invalid) {
+          <p id="name-error" class="form-error">
+            {{ form.controls.name.getError('server') ?? 'El nombre es demasiado largo.' }}
+          </p>
+        }
+      </div>
+
+      <div>
+        <label for="email" class="form-label">Email</label>
+        <input
+          id="email"
+          type="email"
+          class="form-input"
+          formControlName="email"
+          autocomplete="email"
+          [attr.aria-invalid]="form.controls.email.touched && form.controls.email.invalid"
+          aria-describedby="email-error"
+        />
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <p id="email-error" class="form-error">
+            @if (form.controls.email.getError('server'); as message) {
+              {{ message }}
+            } @else if (form.controls.email.hasError('required')) {
+              Introduce tu email.
+            } @else {
+              Introduce un email válido.
+            }
+          </p>
+        }
+      </div>
+
+      <div>
+        <label for="password" class="form-label">Contraseña</label>
+        <input
+          id="password"
+          type="password"
+          class="form-input"
+          formControlName="password"
+          autocomplete="new-password"
+          [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid"
+          aria-describedby="password-rules"
+        />
+        <ul id="password-rules" class="mt-2 space-y-0.5 text-sm" aria-live="polite">
+          @for (rule of passwordRules; track rule.key) {
+            @let failed = passwordRuleFailed(rule.key);
+            <li
+              [class]="
+                failed
+                  ? form.controls.password.touched
+                    ? 'text-red-700'
+                    : 'text-slate-500'
+                  : 'text-emerald-700'
+              "
+            >
+              <span aria-hidden="true">{{ failed ? '•' : '✓' }}</span>
+              {{ rule.label }}
+              <span class="sr-only">{{ failed ? '(pendiente)' : '(cumplido)' }}</span>
+            </li>
+          }
+        </ul>
+        @if (form.controls.password.getError('server'); as message) {
+          <p class="form-error">{{ message }}</p>
+        }
+      </div>
+
+      <div>
+        <label for="confirmPassword" class="form-label">Repite la contraseña</label>
+        <input
+          id="confirmPassword"
+          type="password"
+          class="form-input"
+          formControlName="confirmPassword"
+          autocomplete="new-password"
+          [attr.aria-invalid]="
+            form.controls.confirmPassword.touched &&
+            (form.controls.confirmPassword.invalid || form.hasError('passwordMismatch'))
+          "
+          aria-describedby="confirm-password-error"
+        />
+        @if (form.controls.confirmPassword.touched) {
+          @if (form.controls.confirmPassword.hasError('required')) {
+            <p id="confirm-password-error" class="form-error">Repite la contraseña.</p>
+          } @else if (form.hasError('passwordMismatch')) {
+            <p id="confirm-password-error" class="form-error">Las contraseñas no coinciden.</p>
+          }
+        }
+      </div>
+
+      <button type="submit" class="btn-primary w-full" [disabled]="submitting()">
+        {{ submitting() ? 'Creando cuenta…' : 'Crear cuenta' }}
+      </button>
+    </form>
+  </div>
+</main>

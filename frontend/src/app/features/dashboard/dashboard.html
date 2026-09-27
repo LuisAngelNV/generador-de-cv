@@ -1,0 +1,148 @@
+<header class="border-b border-slate-200 bg-white">
+  <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+    <p class="font-semibold">Generador de CV</p>
+    <div class="flex items-center gap-3">
+      <span class="hidden text-sm text-slate-600 sm:inline">{{
+        user()?.name || user()?.email
+      }}</span>
+      <button type="button" class="btn-secondary" [disabled]="loggingOut()" (click)="logout()">
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="mx-auto max-w-5xl px-4 py-8">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-2xl font-bold tracking-tight">Mis CVs</h1>
+    @if (status() === 'ready' && cvs().length > 0) {
+      <button type="button" class="btn-primary" (click)="openCreate()">Nuevo CV</button>
+    }
+  </div>
+
+  @if (actionError(); as message) {
+    <div
+      class="mt-6 flex items-start justify-between gap-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800"
+      role="alert"
+    >
+      <p>{{ message }}</p>
+      <button type="button" class="font-medium underline" (click)="actionError.set(null)">
+        Cerrar
+      </button>
+    </div>
+  }
+
+  @switch (status()) {
+    @case ('loading') {
+      <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+        <p class="sr-only" role="status">Cargando tus CVs…</p>
+        @for (placeholder of [1, 2, 3]; track placeholder) {
+          <div class="h-44 animate-pulse rounded-2xl bg-slate-200" aria-hidden="true"></div>
+        }
+      </div>
+    }
+    @case ('error') {
+      <div class="mt-6 rounded-2xl border border-red-200 bg-white p-10 text-center" role="alert">
+        <p class="text-slate-700">No se han podido cargar tus CVs.</p>
+        <button type="button" class="btn-secondary mt-4" (click)="load()">Reintentar</button>
+      </div>
+    }
+    @case ('ready') {
+      @if (cvs().length === 0) {
+        <div
+          class="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center"
+        >
+          <p class="text-slate-600">Todavía no tienes ningún CV.</p>
+          <button type="button" class="btn-primary mt-4" (click)="openCreate()">
+            Crear mi primer CV
+          </button>
+        </div>
+      } @else {
+        <ul class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          @for (cv of cvs(); track cv.id) {
+            <li>
+              <app-cv-card
+                [cv]="cv"
+                [busy]="busyCvId() === cv.id"
+                (rename)="openRename(cv)"
+                (duplicate)="duplicate(cv)"
+                (remove)="askDelete(cv)"
+              />
+            </li>
+          }
+        </ul>
+      }
+    }
+  }
+</main>
+
+<app-dialog
+  [open]="titleDialog() !== null"
+  [heading]="titleDialog()?.mode === 'rename' ? 'Renombrar CV' : 'Nuevo CV'"
+  (closed)="closeTitleDialog()"
+>
+  <form [formGroup]="titleForm" (ngSubmit)="submitTitle()" novalidate>
+    <label for="cv-title" class="form-label">Título</label>
+    <input
+      id="cv-title"
+      type="text"
+      class="form-input"
+      formControlName="title"
+      placeholder="Por ejemplo: Desarrolladora frontend"
+      autocomplete="off"
+      [attr.aria-invalid]="titleControl.touched && titleControl.invalid"
+      aria-describedby="cv-title-help"
+    />
+    @if (titleControl.touched && titleControl.invalid) {
+      <p id="cv-title-help" class="form-error">
+        @if (titleControl.hasError('maxlength')) {
+          El título puede tener como máximo 100 caracteres.
+        } @else {
+          Escribe un título.
+        }
+      </p>
+    } @else {
+      <p id="cv-title-help" class="mt-1 text-sm text-slate-500">
+        Solo lo verás tú; te ayuda a distinguir tus CVs.
+      </p>
+    }
+
+    @if (dialogError(); as message) {
+      <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+        {{ message }}
+      </p>
+    }
+
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" class="btn-secondary" (click)="closeTitleDialog()">Cancelar</button>
+      <button type="submit" class="btn-primary" [disabled]="dialogSaving()">
+        {{ titleDialog()?.mode === 'rename' ? 'Guardar' : 'Crear CV' }}
+      </button>
+    </div>
+  </form>
+</app-dialog>
+
+<app-dialog [open]="cvToDelete() !== null" heading="Eliminar CV" (closed)="closeDeleteDialog()">
+  <p class="text-slate-700">
+    ¿Seguro que quieres eliminar <strong class="break-words">{{ cvToDelete()?.title }}</strong
+    >? Se borrarán también todas sus secciones y no se puede deshacer.
+  </p>
+
+  @if (dialogError(); as message) {
+    <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+      {{ message }}
+    </p>
+  }
+
+  <div class="mt-6 flex justify-end gap-2">
+    <button type="button" class="btn-secondary" (click)="closeDeleteDialog()">Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary bg-red-700 hover:bg-red-800"
+      [disabled]="dialogSaving()"
+      (click)="confirmDelete()"
+    >
+      Eliminar
+    </button>
+  </div>
+</app-dialog>

@@ -1,0 +1,63 @@
+<main class="flex min-h-dvh items-center justify-center px-4 py-12">
+  <div class="w-full max-w-sm">
+    <h1 class="text-center text-2xl font-bold tracking-tight">Inicia sesión</h1>
+    <p class="mt-2 text-center text-sm text-slate-600">
+      ¿No tienes cuenta? <a routerLink="/register" class="link">Regístrate</a>
+    </p>
+
+    <form
+      class="mt-8 space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+      novalidate
+    >
+      @if (serverError(); as message) {
+        <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+          {{ message }}
+        </p>
+      }
+
+      <div>
+        <label for="email" class="form-label">Email</label>
+        <input
+          id="email"
+          type="email"
+          class="form-input"
+          formControlName="email"
+          autocomplete="email"
+          [attr.aria-invalid]="form.controls.email.touched && form.controls.email.invalid"
+          aria-describedby="email-error"
+        />
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <p id="email-error" class="form-error">
+            @if (form.controls.email.hasError('required')) {
+              Introduce tu email.
+            } @else {
+              Introduce un email válido.
+            }
+          </p>
+        }
+      </div>
+
+      <div>
+        <label for="password" class="form-label">Contraseña</label>
+        <input
+          id="password"
+          type="password"
+          class="form-input"
+          formControlName="password"
+          autocomplete="current-password"
+          [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid"
+          aria-describedby="password-error"
+        />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <p id="password-error" class="form-error">Introduce tu contraseña.</p>
+        }
+      </div>
+
+      <button type="submit" class="btn-primary w-full" [disabled]="submitting()">
+        {{ submitting() ? 'Entrando…' : 'Entrar' }}
+      </button>
+    </form>
+  </div>
+</main>

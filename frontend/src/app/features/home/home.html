@@ -1,0 +1,14 @@
+<main class="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 text-center">
+  <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl">Generador de CV</h1>
+  <p class="max-w-prose text-base text-slate-600 sm:text-lg">
+    Crea, edita y descarga en PDF un currículum profesional en pocos minutos.
+  </p>
+  <div class="flex flex-col gap-3 sm:flex-row">
+    @if (isAuthenticated()) {
+      <a routerLink="/cvs" class="btn-primary">Ir a mis CVs</a>
+    } @else {
+      <a routerLink="/register" class="btn-primary">Crear cuenta</a>
+      <a routerLink="/login" class="btn-secondary">Iniciar sesión</a>
+    }
+  </div>
+</main>

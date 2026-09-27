@@ -1,0 +1,18 @@
+# PostgreSQL local SOLO para los tests del backend (.env.test en la raíz).
+# Desarrollo y producción usan Supabase.
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cv
+      POSTGRES_PASSWORD: cv
+      POSTGRES_DB: cv_generator_test
+    ports:
+      - '5433:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cv -d cv_generator_test']
+      interval: 5s
+      timeout: 5s
+      retries: 10

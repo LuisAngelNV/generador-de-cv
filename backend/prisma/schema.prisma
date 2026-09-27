@@ -1,0 +1,176 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String         @id @default(uuid()) @db.Uuid
+  email         String         @unique
+  passwordHash  String
+  name          String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  cvs           Cv[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Cv {
+  id             String          @id @default(uuid()) @db.Uuid
+  userId         String          @db.Uuid
+  title          String
+  templateId     String          @default("classic")
+  language       String          @default("es")
+  // Personal data / profile
+  fullName       String          @default("")
+  headline       String?
+  summary        String?
+  email          String?
+  phone          String?
+  location       String?
+  /// [{ label: string, url: string }], validated with zod in the API
+  links          Json            @default("[]")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  experiences    Experience[]
+  educations     Education[]
+  skills         Skill[]
+  languages      Language[]
+  projects       Project[]
+  certifications Certification[]
+
+  @@index([userId])
+}
+
+model Experience {
+  id          String    @id @default(uuid()) @db.Uuid
+  cvId        String    @db.Uuid
+  order       Int
+  position    String
+  company     String
+  location    String?
+  startDate   DateTime  @db.Date
+  endDate     DateTime? @db.Date
+  isCurrent   Boolean   @default(false)
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  cv          Cv        @relation(fields: [cvId], references: [id], onDelete: Cascade)
+
+  @@index([cvId, order])
+}
+
+model Education {
+  id           String    @id @default(uuid()) @db.Uuid
+  cvId         String    @db.Uuid
+  order        Int
+  institution  String
+  degree       String
+  fieldOfStudy String?
+  location     String?
+  startDate    DateTime? @db.Date
+  endDate      DateTime? @db.Date
+  isCurrent    Boolean   @default(false)
+  description  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  cv           Cv        @relation(fields: [cvId], references: [id], onDelete: Cascade)
+
+  @@index([cvId, order])
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+model Skill {
+  id        String      @id @default(uuid()) @db.Uuid
+  cvId      String      @db.Uuid
+  order     Int
+  name      String
+  level     SkillLevel?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  cv        Cv          @relation(fields: [cvId], references: [id], onDelete: Cascade)
+
+  @@index([cvId, order])
+}
+
+/// CEFR levels plus native speaker
+enum LanguageProficiency {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+  NATIVE
+}
+
+model Language {
+  id          String              @id @default(uuid()) @db.Uuid
+  cvId        String              @db.Uuid
+  order       Int
+  name        String
+  proficiency LanguageProficiency
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  cv          Cv                  @relation(fields: [cvId], references: [id], onDelete: Cascade)
+
+  @@index([cvId, order])
+}
+
+model Project {
+  id          String    @id @default(uuid()) @db.Uuid
+  cvId        String    @db.Uuid
+  order       Int
+  name        String
+  role        String?
+  url         String?
+  startDate   DateTime? @db.Date
+  endDate     DateTime? @db.Date
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  cv          Cv        @relation(fields: [cvId], references: [id], onDelete: Cascade)
+
+  @@index([cvId, order])
+}
+
+model Certification {
+  id             String    @id @default(uuid()) @db.Uuid
+  cvId           String    @db.Uuid
+  order          Int
+  name           String
+  issuer         String
+  issueDate      DateTime? @db.Date
+  expirationDate DateTime? @db.Date
+  credentialId   String?
+  credentialUrl  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  cv             Cv        @relation(fields: [cvId], references: [id], onDelete: Cascade)
+
+  @@index([cvId, order])
+}
